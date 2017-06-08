@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
+    <title>code-world-counter</title>
+    <style>
+        /* basic reset */
+        html, body { width: 100%; height: 100%; overflow: hidden; font-size: 16px; }
+
+        html, body, div, p { margin: 0; padding: 0; font-family: monospace; }
+
+        /* webkit-scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+
+        ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.3); border-radius: 3px; }
+
+        ::-webkit-scrollbar, ::-webkit-scrollbar-track, ::-webkit-scrollbar-track-piece, ::-webkit-scrollbar-corner, ::-webkit-resizer { background: transparent; }
+
+        /* specific */
+        #root { width: 100%; height: 100%; overflow: auto; }
+    </style>
+</head>
+
+<body>
+<div id="root">paste code here (Ctrl/Cmd + V)</div>
+</body>
+
+<script type="text/javascript">
+  const CHAR_CODE_UPPER_CASE_A = 'A'.charCodeAt(0)
+  const CHAR_CODE_UPPER_CASE_Z = 'Z'.charCodeAt(0)
+  const CHAR_CODE_LOWER_CASE_A = 'a'.charCodeAt(0)
+  const CHAR_CODE_LOWER_CASE_Z = 'z'.charCodeAt(0)
+  const CHAR_CODE_EXTRA_0 = '-'.charCodeAt(0)
+  const CHAR_CODE_EXTRA_1 = '_'.charCodeAt(0)
+  const PICK_TOP_COUNT = 50
+
+  function doCodeWordCount (codeText) {
+    const wordMap = new Map()
+
+    let sumWordLength = 0
+    let currentWord = ''
+    for (let index = 0, indexMax = codeText.length; index < indexMax; index++) {
+      const currentChar = codeText[ index ]
+      const currentCharCode = currentChar.charCodeAt(0)
+      if (
+        (CHAR_CODE_UPPER_CASE_A <= currentCharCode && CHAR_CODE_UPPER_CASE_Z >= currentCharCode) ||
+        (CHAR_CODE_LOWER_CASE_A <= currentCharCode && CHAR_CODE_LOWER_CASE_Z >= currentCharCode) ||
+        CHAR_CODE_EXTRA_0 === currentCharCode ||
+        CHAR_CODE_EXTRA_1 === currentCharCode
+      ) {
+        currentWord += currentChar
+        sumWordLength++
+      } else if (currentWord) {
+        wordMap.set(currentWord, (wordMap.get(currentWord) || 0) + 1)
+        currentWord = ''
+      }
+    }
+
+    const wordDataList = []
+    wordMap.forEach((count, word) => {
+      const length = word.length
+      const sumLength = length * count
+      wordDataList.push({ word, count, length, sumLength })
+    })
+
+    const wordCountRankList = wordDataList
+      .sort((a, b) => b.count - a.count) // high count first
+      .slice(0, PICK_TOP_COUNT)
+
+    const wordLengthRankList = wordDataList
+      .sort((a, b) => b.length - a.length) // high length first
+      .slice(0, PICK_TOP_COUNT)
+
+    const wordSumLengthRankList = wordDataList
+      .sort((a, b) => b.sumLength - a.sumLength) // high sumLength first
+      .slice(0, PICK_TOP_COUNT)
+
+    return {
+      wordMap,
+      sumWordLength,
+      wordDataList,
+      wordCountRankList,
+      wordLengthRankList,
+      wordSumLengthRankList
+    }
+  }
+
+  const toKB = (byteCount) => `${(byteCount / 1024).toFixed(2)}kb`
+
+  document.addEventListener('paste', (event) => {
+    const content = event.clipboardData.getData('text/plain')
+
+    const {
+      sumWordLength,
+      wordCountRankList,
+      wordLengthRankList,
+      wordSumLengthRankList
+    } = doCodeWordCount(content)
+
+    document.getElementById('root').innerHTML =
+      `<h2>wordSumLengthRankList</h2>` +
+      `<h4>totalChar: ${toKB(content.length)}</h4>` +
+      `<h4>totalCharInWord: ${toKB(sumWordLength)}</h4>` +
+      wordSumLengthRankList.map(({ word, count, sumLength }, index) => `<p>[${index}|${toKB(sumLength)}|x${count}] ${word}</p>`).join('') +
+
+      `<h2>wordCountRankList</h2>` +
+      wordCountRankList.map(({ word, count }, index) => `<p>[${index}|x${count}] ${word}</p>`).join('') +
+
+      `<h2>wordLengthRankList</h2>` +
+      wordLengthRankList.map(({ word }, index) => `<p>[${index}] ${word}</p>`).join('')
+  })
+</script>
+</html>
