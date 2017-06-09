@@ -2,13 +2,12 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width, height=device-height" />
     <title>code-word-counter</title>
     <style>
         /* basic reset */
         html, body { width: 100%; height: 100%; overflow: hidden; font-size: 16px; }
 
-        html, body, div, p { margin: 0; padding: 0; font-family: monospace; }
+        html, body, div, p, input { margin: 0; padding: 0; font-family: monospace; }
 
         /* webkit-scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -19,20 +18,17 @@
 
         /* specific */
         #root { width: 100%; height: 100%; overflow: auto; }
+        #paste-input { width: 100%; overflow: auto; }
     </style>
 </head>
 
 <body>
-<div id="root">paste code here (Ctrl/Cmd + V)</div>
+<input id="paste-input" type="text" value="paste code here (Ctrl/Cmd + V)" autofocus />
+<div id="root"></div>
 </body>
 
 <script type="text/javascript">
-  const CHAR_CODE_UPPER_CASE_A = 'A'.charCodeAt(0)
-  const CHAR_CODE_UPPER_CASE_Z = 'Z'.charCodeAt(0)
-  const CHAR_CODE_LOWER_CASE_A = 'a'.charCodeAt(0)
-  const CHAR_CODE_LOWER_CASE_Z = 'z'.charCodeAt(0)
-  const CHAR_CODE_EXTRA_0 = '-'.charCodeAt(0)
-  const CHAR_CODE_EXTRA_1 = '_'.charCodeAt(0)
+  const REGEXP_CHAR_IN_WORD = /[A-Za-z0-9\-_$]/
   const PICK_TOP_COUNT = 50
 
   function doCodeWordCount (codeText) {
@@ -42,13 +38,7 @@
     let currentWord = ''
     for (let index = 0, indexMax = codeText.length; index < indexMax; index++) {
       const currentChar = codeText[ index ]
-      const currentCharCode = currentChar.charCodeAt(0)
-      if (
-        (CHAR_CODE_UPPER_CASE_A <= currentCharCode && CHAR_CODE_UPPER_CASE_Z >= currentCharCode) ||
-        (CHAR_CODE_LOWER_CASE_A <= currentCharCode && CHAR_CODE_LOWER_CASE_Z >= currentCharCode) ||
-        CHAR_CODE_EXTRA_0 === currentCharCode ||
-        CHAR_CODE_EXTRA_1 === currentCharCode
-      ) {
+      if (REGEXP_CHAR_IN_WORD.test(currentChar)) {
         currentWord += currentChar
         sumWordLength++
       } else if (currentWord) {
@@ -86,11 +76,15 @@
     }
   }
 
-  const toKB = (byteCount) => `${(byteCount / 1024).toFixed(2)}kb`
+  const KILOBYTE = 1024
+  const MEGABYTE = 1024 * 1024
+  const toSize = (byteCount) => (
+    byteCount > MEGABYTE ? `${(byteCount / MEGABYTE).toFixed(2)}mB`
+      : byteCount > KILOBYTE ? `${(byteCount / KILOBYTE).toFixed(2)}kB`
+      : `${Math.round(byteCount)}B`
+  )
 
-  document.addEventListener('paste', (event) => {
-    const content = event.clipboardData.getData('text/plain')
-
+  function process (content) {
     const {
       sumWordLength,
       wordCountRankList,
@@ -100,15 +94,19 @@
 
     document.getElementById('root').innerHTML =
       `<h2>wordSumLengthRankList</h2>` +
-      `<h4>totalChar: ${toKB(content.length)}</h4>` +
-      `<h4>totalCharInWord: ${toKB(sumWordLength)}</h4>` +
-      wordSumLengthRankList.map(({ word, count, sumLength }, index) => `<p>[${index}|${toKB(sumLength)}|x${count}] ${word}</p>`).join('') +
-
+      `<h4>totalChar: ${toSize(content.length)} | totalCharInWord: ${toSize(sumWordLength)}</h4>` +
+      wordSumLengthRankList.map(({ word, count, sumLength }, index) => `<p>[${index}|${toSize(sumLength)}|#${count}] ${word}</p>`).join('') +
       `<h2>wordCountRankList</h2>` +
-      wordCountRankList.map(({ word, count }, index) => `<p>[${index}|x${count}] ${word}</p>`).join('') +
-
+      wordCountRankList.map(({ word, count }, index) => `<p>[${index}|#${count}] ${word}</p>`).join('') +
       `<h2>wordLengthRankList</h2>` +
       wordLengthRankList.map(({ word }, index) => `<p>[${index}] ${word}</p>`).join('')
+  }
+
+  document.addEventListener('paste', (event) => {
+    const content = event.clipboardData.getData('text/plain')
+    event.preventDefault()
+    event.stopPropagation()
+    process(content)
   })
 </script>
 </html>
